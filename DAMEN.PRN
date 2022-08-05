@@ -1,0 +1,966 @@
+	MACRO-80 3.44	09-Dec-81	PAGE	1
+
+
+                                ; ************************************************************
+                                ; *                                                          *
+                                ; *  Das (Super-)Damen-Problem       Version vom 05.08.2022  *
+                                ; *                                                          *
+                                ; ************************************************************
+                                ;
+                                ; Dokumentation:
+                                ; https://de.wikipedia.org/wiki/Damenproblem
+                                ;
+                                ;
+                                ; ***************************************************
+                                ; *  Wichtig: Fuer das AC1-Programm muss die        *
+                                ; *           folgende Zeile auskommentiert werden  *
+                                ; ***************************************************
+  0001                          CPM     EQU  1            ;CP/M-Version
+                                ;
+                                        PAGE 64
+	MACRO-80 3.44	09-Dec-81	PAGE	1-1
+
+
+                                
+                                        IF1
+                                        IFDEF CPM
+                                        .PRINTX 'CP/M-Version'
+                                        ELSE
+                                        .PRINTX 'Version fuer den AC1-Monitor'
+                                        ENDIF
+                                        .PRINTX 'PASS 1'
+                                        ENDIF
+                                ;
+                                        IF2
+                                        .PRINTX 'PASS 2'
+                                        ENDIF
+                                ;
+                                        .CREF
+                                        .Z80
+                                        IFDEF CPM
+                                        .PHASE 100H       ;CP/M-Programm startet bei 100H
+                                        ELSE
+                                        .PHASE 4000H      ;AC1-Programm startet bei 4000H
+                                        ENDIF
+                                ;
+  0000                          WBOOT   EQU  00000H       ;Warmstart
+  E606                          CONST   EQU  0E606H       ;BIOS - CONST
+  E609                          CONIN   EQU  0E609H       ;BIOS - CONIN
+  E60C                          CONOUT  EQU  0E60CH       ;BIOS - CONOUT
+                                ;
+  07FD                          GETCO   EQU  07FDH        ;AC1-Monitor - Eingabeschleife
+                                ;
+  0085                          IORTC   EQU  85H          ;IO-Adresse RTC
+                                ;
+  0100    C3 0336                       JP   START
+                                ;
+                                ;
+                                ; Bildschirmausschriften
+                                ;
+  0103    0D 0A 0D 0A           ANFTXT: DEFB 0DH,0AH,0DH,0AH
+  0107    44 61 73 20                   DEFM "Das (Super-)Damen-Problem"
+  010B    28 53 75 70           
+  010F    65 72 2D 29           
+  0113    44 61 6D 65           
+  0117    6E 2D 50 72           
+  011B    6F 62 6C 65           
+  011F    6D                    
+  0120    0D 0A                         DEFB 0DH,0AH
+  0122    2D 2D 2D 2D                   DEFM "-------------------------"
+  0126    2D 2D 2D 2D           
+  012A    2D 2D 2D 2D           
+  012E    2D 2D 2D 2D           
+  0132    2D 2D 2D 2D           
+  0136    2D 2D 2D 2D           
+  013A    2D                    
+  013B    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH
+  013F    41 75 66 67                   DEFM "Aufgabe an den Rechner:"
+  0143    61 62 65 20           
+  0147    61 6E 20 64           
+  014B    65 6E 20 52           
+  014F    65 63 68 6E           
+  0153    65 72 3A              
+	MACRO-80 3.44	09-Dec-81	PAGE	1-2
+
+
+  0156    0D 0A                         DEFB 0DH,0AH
+  0158    53 74 65 6C                   DEFM "Stelle n Damen auf einem n x n Schachbrett so auf,"
+  015C    6C 65 20 6E           
+  0160    20 44 61 6D           
+  0164    65 6E 20 61           
+  0168    75 66 20 65           
+  016C    69 6E 65 6D           
+  0170    20 6E 20 78           
+  0174    20 6E 20 53           
+  0178    63 68 61 63           
+  017C    68 62 72 65           
+  0180    74 74 20 73           
+  0184    6F 20 61 75           
+  0188    66 2C                 
+  018A    0D 0A                         DEFB 0DH,0AH
+  018C    64 61 73 73                   DEFM "dass sie sich gegenseitig nicht schlagen koennen."
+  0190    20 73 69 65           
+  0194    20 73 69 63           
+  0198    68 20 67 65           
+  019C    67 65 6E 73           
+  01A0    65 69 74 69           
+  01A4    67 20 6E 69           
+  01A8    63 68 74 20           
+  01AC    73 63 68 6C           
+  01B0    61 67 65 6E           
+  01B4    20 6B 6F 65           
+  01B8    6E 6E 65 6E           
+  01BC    2E                    
+  01BD    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH
+  01C1    53 75 70 65                   DEFM "Super-Damen (Amazonen):"
+  01C5    72 2D 44 61           
+  01C9    6D 65 6E 20           
+  01CD    28 41 6D 61           
+  01D1    7A 6F 6E 65           
+  01D5    6E 29 3A              
+  01D8    0D 0A                         DEFB 0DH,0AH
+  01DA    53 75 70 65                   DEFM "Super-Damen duerfen wie Damen und Springer ziehen."
+  01DE    72 2D 44 61           
+  01E2    6D 65 6E 20           
+  01E6    64 75 65 72           
+  01EA    66 65 6E 20           
+  01EE    77 69 65 20           
+  01F2    44 61 6D 65           
+  01F6    6E 20 75 6E           
+  01FA    64 20 53 70           
+  01FE    72 69 6E 67           
+  0202    65 72 20 7A           
+  0206    69 65 68 65           
+  020A    6E 2E                 
+  020C    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH
+  0210    41 62 62 72                   DEFM "Abbruch mit Ctrl-C"
+  0214    75 63 68 20           
+  0218    6D 69 74 20           
+  021C    43 74 72 6C           
+  0220    2D 43                 
+  0222    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH
+  0226    41 6E 7A 61                   DEFM "Anzahl der Damen (1..12) = "
+  022A    68 6C 20 64           
+  022E    65 72 20 44           
+  0232    61 6D 65 6E           
+	MACRO-80 3.44	09-Dec-81	PAGE	1-3
+
+
+  0236    20 28 31 2E           
+  023A    2E 31 32 29           
+  023E    20 3D 20              
+  0241    00                            DEFB 00H
+                                ;
+  0242    0D 0A 0D 0A           SDTXT:  DEFB 0DH,0AH,0DH,0AH
+  0246    4D 69 74 20                   DEFM "Mit Super-Damen? (j/n): "
+  024A    53 75 70 65           
+  024E    72 2D 44 61           
+  0252    6D 65 6E 3F           
+  0256    20 28 6A 2F           
+  025A    6E 29 3A 20           
+  025E    00                            DEFB 00H
+                                ;
+  025F    41 6E 7A 65           SBTXT:  DEFM "Anzeige Schachbrett? (j/n): "
+  0263    69 67 65 20           
+  0267    53 63 68 61           
+  026B    63 68 62 72           
+  026F    65 74 74 3F           
+  0273    20 28 6A 2F           
+  0277    6E 29 3A 20           
+  027B    00                            DEFB 00H
+                                ;
+  027C    4A 61                 YESTXT: DEFM "Ja"
+  027E    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH,00H
+  0282    00                    
+                                ;
+  0283    4E 65 69 6E           NOTXT:  DEFM "Nein"
+  0287    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH,00H
+  028B    00                    
+                                ;
+  028C    0D 0A 00              NL1TXT: DEFB 0DH,0AH,00H
+                                ;
+  028F    0D 0A 0D 0A           NL2TXT: DEFB 0DH,0AH,0DH,0AH,00H
+  0293    00                    
+                                ;
+  0294    2E 20 4C 6F           LOETXT: DEFM ". Loesung - "
+  0298    65 73 75 6E           
+  029C    67 20 2D 20           
+  02A0    00                            DEFB 00H
+                                ;
+  02A1    41 62 62 72           BRKTXT: DEFM "Abbruch!"
+  02A5    75 63 68 21           
+  02A9    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH,00H
+  02AD    00                    
+                                ;
+  02AE    46 65 72 74           RDYTXT: DEFM "Fertig!"
+  02B2    69 67 21              
+  02B5    00                            DEFB 00H
+                                ;
+  02B6    20 20 20 20           SE1TXT: DEFM "    1 Sekunde Rechenzeit"
+  02BA    31 20 53 65           
+  02BE    6B 75 6E 64           
+  02C2    65 20 52 65           
+  02C6    63 68 65 6E           
+  02CA    7A 65 69 74           
+  02CE    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH,00H
+  02D2    00                    
+                                ;
+  02D3    20 20 20 20           SECTXT: DEFM "    0 Sekunden Rechenzeit"
+	MACRO-80 3.44	09-Dec-81	PAGE	1-4
+
+
+  02D7    30 20 53 65           
+  02DB    6B 75 6E 64           
+  02DF    65 6E 20 52           
+  02E3    65 63 68 65           
+  02E7    6E 7A 65 69           
+  02EB    74                    
+  02EC    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH,00H
+  02F0    00                    
+                                ;
+  02F1    2D 2D 3E 20           NOSTXT: DEFM "--> keine Loesung gefunden!"
+  02F5    6B 65 69 6E           
+  02F9    65 20 4C 6F           
+  02FD    65 73 75 6E           
+  0301    67 20 67 65           
+  0305    66 75 6E 64           
+  0309    65 6E 21              
+  030C    0D 0A 0D 0A                   DEFB 0DH,0AH,0DH,0AH,00H
+  0310    00                    
+                                ;
+                                ;
+                                ; UP Taste gedrueckt?
+                                ; ===================
+                                ;
+  0311                          TASTE:
+                                        IFDEF CPM
+  0311    CD E606               PATCH1: CALL CONST        ;CP/M: CONST
+                                        ELSE
+                                        IN   A,(04H)      ;AC1: PIO1 Port A lesen
+                                        RES  7,A
+                                        OR   A
+                                        JR   Z,TASTE1
+                                        LD   (BR),A       ;Tasten-Code merken
+                                        LD   A,0FFH       ;Taste gedrueckt
+                                        ENDIF
+  0314    C9                    TASTE1: RET
+                                ;
+                                ;
+                                ; UP Zeicheneingabe
+                                ; =================
+                                ;
+  0315                          INZEI:
+                                        IFDEF CPM
+  0315    CD E609               PATCH2: CALL CONIN        ;CP/M: CONIN
+                                        ELSE
+                                INZEI1: IN   A,(04H)      ;AC1: PIO1 Port A lesen
+                                        RES  7,A
+                                        OR   A
+                                        JR   NZ,INZEI1    ;(falsche) Taste gedrueckt
+                                INZEI2: IN   A,(04H)      ;AC1: PIO1 Port A lesen
+                                        RES  7,A
+                                        OR   A
+                                        JR   Z,INZEI2     ;keine Taste gedrueckt
+                                        ENDIF
+  0318    C9                            RET
+                                ;
+                                ;
+                                ; UP Zeichenausgabe
+                                ; =================
+                                ;
+  0319    F5                    OUTZEI: PUSH AF
+	MACRO-80 3.44	09-Dec-81	PAGE	1-5
+
+
+  031A    C5                            PUSH BC
+  031B    D5                            PUSH DE
+                                        IFDEF CPM
+  031C    CD E60C               PATCH3: CALL CONOUT       ;CP/M: CONOUT
+                                        ELSE
+                                        LD  A,C
+                                        CP  0AH           ;0AH nicht ausgeben
+                                        JR  Z,OUTZE1
+                                        RST 10H           ;AC1: RST 10H
+                                        ENDIF
+  031F    D1                    OUTZE1: POP  DE
+  0320    C1                            POP  BC
+  0321    F1                            POP  AF
+  0322    C9                            RET
+                                ;
+                                ;
+                                ; UP Textausgabe
+                                ; ==============
+                                ;
+  0323    F5                    OUTTXT: PUSH AF
+  0324    C5                            PUSH BC
+  0325    D5                            PUSH DE
+  0326    7E                    OUTTX1: LD   A,(HL)
+  0327    FE 00                         CP   0            ;Ende
+  0329    28 07                         JR   Z,OUTTX3
+                                        IFDEF CPM
+  032B    4F                            LD   C,A
+  032C    CD E60C               PATCH4: CALL CONOUT       ;CP/M: CONOUT
+                                        ELSE
+                                        CP  0AH           ;0AH nicht ausgeben
+                                        JR  Z,OUTTX2
+                                        RST 10H           ;AC1: RST 10H
+                                        ENDIF
+  032F    23                    OUTTX2: INC  HL
+  0330    18 F4                         JR   OUTTX1
+  0332    D1                    OUTTX3: POP  DE
+  0333    C1                            POP  BC
+  0334    F1                            POP  AF
+  0335    C9                            RET
+                                ;
+                                ;
+                                ; Programmstart
+                                ; =============
+                                ;
+  0336                          START:
+                                        IFDEF CPM
+  0336    31 0100                       LD   SP,0100H     ;CP/M - Stack
+                                        ELSE
+                                        LD   SP,1856H     ;AC1 - Stack
+                                        ENDIF
+                                ;
+                                ; BIOS-Routinen: HWT patchen
+                                ;
+                                        IFDEF CPM
+  0339    3A 0002                       LD   A,(WBOOT+2)  ;HWT Adresse WBOOT lesen
+  033C    32 0313                       LD   (PATCH1+2),A ;HWT Adresse CONST
+  033F    32 0317                       LD   (PATCH2+2),A ;HWT Adresse CONIN
+  0342    32 031E                       LD   (PATCH3+2),A ;HWT Adresse CONOUT
+  0345    32 032E                       LD   (PATCH4+2),A ;HWT Adresse CONOUT
+                                        ENDIF
+	MACRO-80 3.44	09-Dec-81	PAGE	1-6
+
+
+                                ;
+                                ; Variablenspeicher loeschen
+                                ;
+  0348    21 068D                       LD   HL,AD
+  034B    01 0014                       LD   BC,20
+  034E    36 00                 CLR1:   LD   (HL),0
+  0350    23                            INC  HL
+  0351    10 FB                         DJNZ CLR1
+                                ;
+                                ; Sekunden-Anzeige ruecksetzen
+                                ;
+  0353    21 02D7                       LD   HL,SECTXT+4
+  0356    36 30                         LD   (HL),30H
+  0358    06 04                         LD   B,4
+  035A    2B                    CLR2:   DEC  HL
+  035B    36 20                         LD   (HL),20H
+  035D    10 FB                         DJNZ CLR2
+                                ;
+                                ; Anfangstext und Anzahl der Damen
+                                ;
+  035F    21 0103                       LD   HL,ANFTXT    ;Anfangstext
+  0362    CD 0323                       CALL OUTTXT
+  0365    CD 0315               START1: CALL INZEI        ;CALL CONIN --> 1. Ziffer
+  0368    FE 03                         CP   03H          ;Abbruch?
+  036A    CA 0444                       JP   Z,ABRUCH
+  036D    FE 31                         CP   31H          ;D >= "1"?
+  036F    38 F4                         JR   C,START1
+  0371    FE 3A                         CP   3AH          ;D <= "9"?
+  0373    30 F0                         JR   NC,START1
+  0375    4F                            LD   C,A
+  0376    CD 0319                       CALL OUTZEI
+  0379    E6 0F                         AND  0FH          ;Ziffer --> HEX-Wert
+  037B    FE 01                         CP   1            ;D = "1"?
+  037D    20 20                         JR   NZ,START4
+  037F    CD 0315               START2: CALL INZEI        ;CALL CONIN --> 2. Ziffer
+  0382    FE 03                         CP   03H          ;Abbruch?
+  0384    CA 0444                       JP   Z,ABRUCH
+  0387    FE 0D                         CP   0DH          ;D = <ENTER>?
+  0389    28 12                         JR   Z,START3
+  038B    FE 30                         CP   30H          ;D >= "0"?
+  038D    38 F0                         JR   C,START2
+  038F    FE 33                         CP   33H          ;D <= "2"?
+  0391    30 EC                         JR   NC,START2
+  0393    4F                            LD   C,A
+  0394    CD 0319                       CALL OUTZEI
+  0397    E6 0F                         AND  0FH          ;Ziffer --> HEX-Wert
+  0399    C6 0A                         ADD  A,10
+  039B    18 02                         JR   START4
+                                ;
+  039D    3E 01                 START3: LD   A,1          ;2. Ziffer war <Enter>
+  039F    21 068D               START4: LD   HL,AD
+  03A2    77                            LD   (HL),A       ;Anzahl der Damen speichern
+                                ;
+                                ; mit Super-Damen?
+                                ;
+  03A3    21 0242                       LD   HL,SDTXT     ;Super-Damen-Text
+  03A6    CD 0323                       CALL OUTTXT
+  03A9    CD 0315                       CALL INZEI        ;CALL CONIN
+  03AC    FE 03                         CP   03H          ;Abbruch?
+  03AE    CA 0444                       JP   Z,ABRUCH
+	MACRO-80 3.44	09-Dec-81	PAGE	1-7
+
+
+  03B1    E6 DF                         AND  0DFH         ;UPCASE
+  03B3    32 068E                       LD   (SD),A       ;Wert im Feld SD speichern
+  03B6    FE 4A                         CP   "J"
+  03B8    21 027C                       LD   HL,YESTXT
+  03BB    28 03                         JR   Z,START5
+  03BD    21 0283                       LD   HL,NOTXT
+  03C0    CD 0323               START5: CALL OUTTXT
+                                ;
+                                ; Schachbrett anzeigen?
+                                ;
+  03C3    21 025F                       LD   HL,SBTXT     ;Schachbrett-Text
+  03C6    CD 0323                       CALL OUTTXT
+  03C9    CD 0315                       CALL INZEI        ;CALL CONIN
+  03CC    FE 03                         CP   03H          ;Abbruch?
+  03CE    CA 0444                       JP   Z,ABRUCH
+  03D1    E6 DF                         AND  0DFH         ;UPCASE
+  03D3    32 068F                       LD   (SB),A       ;Wert im Feld SB speichern
+  03D6    FE 4A                         CP   "J"
+  03D8    21 027C                       LD   HL,YESTXT
+  03DB    28 03                         JR   Z,START6
+  03DD    21 0283                       LD   HL,NOTXT
+  03E0    CD 0323               START6: CALL OUTTXT
+                                ;
+                                ; RTC lesen und Berechnung starten
+                                ;
+  03E3    CD 0623                       CALL RTC          ;Startzeit --> HL
+  03E6    E5                            PUSH HL           ;Startzeit sichern
+  03E7    CD 0449                       CALL DAMEN
+  03EA    2A 069C                       LD   HL,(NO)      ;Loesungs-Nummer
+  03ED    7C                            LD   A,H
+  03EE    B5                            OR   L
+  03EF    28 4E                         JR   Z,NOSOLV     ;keine Loesung gefunden
+                                ;
+                                ; Berechnungszeit ausgeben --> rechnet bis 1 Stunde korrekt
+                                ;
+  03F1    CD 0623                       CALL RTC          ;Ende-Zeit --> HL
+  03F4    D1                            POP  DE           ;Startzeit --> DE
+  03F5    AF                            XOR  A            ;CY = 0
+  03F6    ED 52                         SBC  HL,DE
+  03F8    E5                            PUSH HL           ;Differenzzeit sichern
+  03F9    7C                            LD   A,H
+  03FA    E6 F0                         AND  0F0H         ;Pruefen auf Cberlauf (-1 Stunde)
+  03FC    FE F0                         CP   0F0H
+  03FE    20 04                         JR   NZ,START7
+  0400    11 0E10                       LD   DE,0E10H     ;3600 Sekunden addieren
+  0403    19                            ADD  HL,DE
+  0404    CD 0669               START7: CALL ZEIT         ;Rechenzeit dezimal ausgeben
+  0407    3A 068F                       LD   A,(SB)
+  040A    FE 4A                         CP   "J"          ;Schachbrett-Darstellung?
+  040C    28 06                         JR   Z,START8     ;ja
+  040E    21 028C                       LD   HL,NL1TXT    ;nein, neue Zeile
+  0411    CD 0323                       CALL OUTTXT
+                                ;
+                                ; Schlusstext: "Fertig!" oder "Abbruch!"
+                                ;
+  0414    3A 06A0               START8: LD   A,(BR)       ;Break-Tastencode
+  0417    21 02A1                       LD   HL,BRKTXT    ;"Abbruch!"
+  041A    D1                            POP  DE           ;Differenzzeit zurueck
+  041B    FE 03                         CP   03H          ;Ctrl-C ?
+  041D    28 1A                         JR   Z,START9     ;--> Abbruch
+	MACRO-80 3.44	09-Dec-81	PAGE	1-8
+
+
+  041F    21 02AE                       LD   HL,RDYTXT    ;"Fertig!"
+  0422    CD 0323                       CALL OUTTXT
+  0425    13                            INC  DE
+  0426    21 028F                       LD   HL,NL2TXT    ;keine Sekundenanzeige
+  0429    1B                            DEC  DE
+  042A    7A                            LD   A,D
+  042B    B3                            OR   E
+  042C    28 0B                         JR   Z,START9
+  042E    21 02B6                       LD   HL,SE1TXT    ;Anzeige: 1 Sekunde
+  0431    1B                            DEC  DE
+  0432    7A                            LD   A,D
+  0433    B3                            OR   E
+  0434    28 03                         JR   Z,START9
+  0436    21 02D3                       LD   HL,SECTXT    ;Anzeige: n Sekunden
+  0439    CD 0323               START9: CALL OUTTXT
+                                        IFDEF CPM
+  043C    C3 0000                       JP   WBOOT        ;CP/M: WBOOT
+                                        ELSE
+                                        JP   GETCO        ;AC1: Eingabeschleife
+                                        ENDIF
+                                ;
+  043F    21 02F1               NOSOLV: LD   HL,NOSTXT    ;Anzeige: --> keine Loesung gefunden!
+  0442    18 F5                         JR   START9
+                                ;
+  0444    21 02A1               ABRUCH: LD   HL,BRKTXT    ;Anzeige: Abbruch!
+  0447    18 F0                         JR   START9
+                                ;
+                                ;
+                                ; Damenprogramm
+                                ; =============
+                                ;
+  0449    21 068D               DAMEN:  LD   HL,AD
+  044C    56                            LD   D,(HL)       ;D = Anz. der Damen
+  044D    21 0690                       LD   HL,DA        ;HL -> Damenspeicher 1. Position
+  0450    0E 01                         LD   C,1          ;C = Anz. der gesetzten Damen
+  0452    5E                    DAMEN1: LD   E,(HL)       ;E = akt. Damenposition [0..7]
+  0453    E5                            PUSH HL
+  0454    21 0690                       LD   HL,DA        ;Damenspeicher 1. Pos.
+  0457    41                            LD   B,C          ;B = Laufvariable [C..1]
+  0458    18 34                         JR   DAMEN5
+                                ;
+  045A    7E                    DAMEN2: LD   A,(HL)       ;Damenposition im Damen-Speicher
+  045B    BB                            CP   E            ;gleiche Hoehe?
+  045C    28 48                         JR   Z,DAMEN6
+  045E    80                            ADD  A,B
+  045F    BB                            CP   E            ;Diagonale 1?
+  0460    28 44                         JR   Z,DAMEN6
+  0462    90                            SUB  B
+  0463    90                            SUB  B
+  0464    BB                            CP   E            ;Diagonale 2?
+  0465    28 3F                         JR   Z,DAMEN6
+                                ;
+                                ; Start of "Super-Dame"
+                                ;
+  0467    3A 068E                       LD   A,(SD)       ;Super-Damen?
+  046A    FE 4A                         CP   "J"
+  046C    20 1F                         JR   NZ,DAMEN4    ;nein
+                                ;
+  046E    78                            LD   A,B          ;Laufvariable [C..1]
+  046F    FE 01                         CP   1            ;letzte Damenposition?
+	MACRO-80 3.44	09-Dec-81	PAGE	1-9
+
+
+  0471    20 0B                         JR   NZ,DAMEN3
+  0473    7E                            LD   A,(HL)
+  0474    C6 02                         ADD  A,2
+  0476    BB                            CP   E            ;Pferd 1?
+  0477    28 2D                         JR   Z,DAMEN6
+  0479    D6 04                         SUB  4
+  047B    BB                            CP   E            ;Pferd 2?
+  047C    28 28                         JR   Z,DAMEN6
+  047E    78                    DAMEN3: LD   A,B          ;Laufvariable [C..1]
+  047F    FE 02                         CP   2            ;vorletzte Damenposition?
+  0481    20 0A                         JR   NZ,DAMEN4
+  0483    7E                            LD   A,(HL)
+  0484    3C                            INC  A
+  0485    BB                            CP   E            ;Pferd 3?
+  0486    28 1E                         JR   Z,DAMEN6
+  0488    D6 02                         SUB  2
+  048A    BB                            CP   E            ;Pferd 4?
+  048B    28 19                         JR   Z,DAMEN6
+                                ;
+                                ; End of "Super-Dame"
+                                ;
+  048D    23                    DAMEN4: INC  HL
+  048E    10 CA                 DAMEN5: DJNZ DAMEN2
+  0490    E1                            POP  HL           ;Zeile ist korrekt!
+  0491    0C                            INC  C            ;Anz. der gesetzten Damen += 1
+  0492    23                            INC  HL           ;naechste Zeile
+  0493    7A                            LD   A,D
+  0494    B9                            CP   C            ;D Damen erreicht?
+  0495    30 BB                         JR   NC,DAMEN1    ;nein
+  0497    CD 04C4                       CALL PRINT        ;ja --> Ergebnisausgabe
+  049A    3A 068F                       LD   A,(SB)
+  049D    FE 4A                         CP   "J"          ;Schachbrett-Darstellung?
+  049F    20 0D                         JR   NZ,DAMEN8    ;nein
+  04A1    CD 056E                       CALL SBRETT
+  04A4    18 08                         JR   DAMEN8
+                                ;
+  04A6    E1                    DAMEN6: POP  HL           ;letzter Zug war nicht korrekt
+  04A7    34                    DAMEN7: INC  (HL)         ;naechste Position testen
+  04A8    7E                            LD   A,(HL)
+  04A9    BA                            CP   D            ;D Felder erreicht?
+  04AA    38 A6                         JR   C,DAMEN1     ;nein
+  04AC    36 00                         LD   (HL),0       ;ja, 1 Schritt zurueck
+  04AE    CD 0311               DAMEN8: CALL TASTE        ;Taste gedrueckt?
+  04B1    B7                            OR   A
+  04B2    28 07                         JR   Z,DAMEN9     ;nein
+                                        IFDEF CPM
+  04B4    CD 0315                       CALL INZEI        ;CP/M: Eingabepuffer lesen
+                                        ELSE
+                                        LD   A,(BR)       ;AC1: Break-Tastencode holen
+                                        ENDIF  
+  04B7    FE 03                         CP   03H          ;Ctrl-C ?
+  04B9    28 05                         JR   Z,BREAK      ;ja --> Abbruch
+  04BB    2B                    DAMEN9: DEC  HL
+  04BC    0D                            DEC  C
+  04BD    20 E8                         JR   NZ,DAMEN7
+  04BF    C9                            RET               ;alles getestet, fertig!
+                                ;
+  04C0    32 06A0               BREAK:  LD   (BR),A
+  04C3    C9                            RET
+                                ;
+	MACRO-80 3.44	09-Dec-81	PAGE	1-10
+
+
+                                ;
+                                ; Ergebnisausgabe
+                                ; ===============
+                                ;
+  04C4    C5                    PRINT:  PUSH BC
+  04C5    D5                            PUSH DE
+  04C6    E5                            PUSH HL
+                                ;
+                                ; Loesungs-Nummer += 1
+                                ;
+  04C7    2A 069C                       LD   HL,(NO)      ;Loesungs-Nummer
+  04CA    ED 5B 069E                    LD   DE,(N2)      ;Loesungs-Nummer #2
+  04CE    7D                            LD   A,L
+  04CF    C6 01                         ADD  A,1          ;Einer += 1
+  04D1    27                            DAA
+  04D2    6F                            LD   L,A
+  04D3    7C                            LD   A,H
+  04D4    CE 00                         ADC  A,0          ;Hunderter += Ueberschlag
+  04D6    27                            DAA
+  04D7    67                            LD   H,A
+  04D8    7B                            LD   A,E
+  04D9    CE 00                         ADC  A,0          ;Zehntausender += Ueberschlag
+  04DB    27                            DAA
+  04DC    5F                            LD   E,A
+  04DD    22 069C                       LD   (NO),HL      ;zurueckschreiben
+  04E0    ED 53 069E                    LD   (N2),DE      ;zurueckschreiben #2
+                                ;
+                                ; Ziffernanzeige
+                                ;
+  04E4    06 00                         LD   B,0          ;Merker fuer NICHT-fuehrende Nullen
+  04E6    7B                            LD   A,E
+  04E7    E6 01                         AND  01H          ;12 Damen geht "nur" bis 14200
+  04E9    F6 30                         OR   30H
+  04EB    4F                            LD   C,A
+  04EC    FE 30                         CP   30H          ;"0"?
+  04EE    28 05                         JR   Z,PRINT1
+  04F0    CD 0319                       CALL OUTZEI       ;Zehntausender ausgeben
+  04F3    06 01                         LD   B,1          ;ab jetzt "0" ausgeben
+  04F5    7C                    PRINT1: LD   A,H
+  04F6    E6 F0                         AND  0F0H
+  04F8    1F                            RRA
+  04F9    1F                            RRA
+  04FA    1F                            RRA
+  04FB    1F                            RRA
+  04FC    F6 30                         OR   30H
+  04FE    4F                            LD   C,A
+  04FF    80                            ADD  A,B
+  0500    FE 30                         CP   30H          ;"0"?
+  0502    28 05                         JR   Z,PRINT2
+  0504    CD 0319                       CALL OUTZEI       ;Tausender ausgeben
+  0507    06 01                         LD   B,1          ;ab jetzt "0" ausgeben
+  0509    7C                    PRINT2: LD   A,H
+  050A    E6 0F                         AND  0FH
+  050C    F6 30                         OR   30H
+  050E    4F                            LD   C,A
+  050F    80                            ADD  A,B
+  0510    FE 30                         CP   30H          ;"0"?
+  0512    28 05                         JR   Z,PRINT3
+  0514    CD 0319                       CALL OUTZEI       ;Hunderter ausgeben
+  0517    06 01                         LD   B,1          ;ab jetzt "0" ausgeben
+	MACRO-80 3.44	09-Dec-81	PAGE	1-11
+
+
+  0519    7D                    PRINT3: LD   A,L
+  051A    E6 F0                         AND  0F0H
+  051C    1F                            RRA
+  051D    1F                            RRA
+  051E    1F                            RRA
+  051F    1F                            RRA
+  0520    F6 30                         OR   30H
+  0522    4F                            LD   C,A
+  0523    80                            ADD  A,B
+  0524    FE 30                         CP   30H          ;"0"?
+  0526    28 03                         JR   Z,PRINT4
+  0528    CD 0319                       CALL OUTZEI       ;Zehner ausgeben
+  052B    7D                    PRINT4: LD   A,L
+  052C    E6 0F                         AND  0FH
+  052E    F6 30                         OR   30H
+  0530    4F                            LD   C,A
+  0531    CD 0319                       CALL OUTZEI       ;Einer ausgeben
+  0534    21 0294                       LD   HL,LOETXT
+  0537    CD 0323                       CALL OUTTXT       ;". Loesung - "
+                                ;
+                                ; Position der Damen ausgeben
+                                ;
+  053A    21 068D                       LD   HL,AD        ;HL -> Anzahl der Damen
+  053D    56                            LD   D,(HL)       ;D = Anz. der Damen
+  053E    1E 41                         LD   E,41H        ;erste Feldbezeichnung "A"
+  0540    21 0690                       LD   HL,DA        ;Damenspeicher 1. Position
+  0543    4B                    PRINT5: LD   C,E
+  0544    CD 0319                       CALL OUTZEI       ;Feldbezeichnung <Buchstabe> ausgeben
+  0547    7E                            LD   A,(HL)
+  0548    3C                            INC  A            ;Wertebereich [1..D]
+  0549    F6 30                         OR   30H
+  054B    FE 3A                         CP   3AH          ;Feldbezeichnung > "9"?
+  054D    38 07                         JR   C,PRINT6     ;nein
+  054F    0E 31                         LD   C,31H        ;Zehnerstelle = "1"
+  0551    CD 0319                       CALL OUTZEI
+  0554    D6 0A                         SUB  10           ;Einerstelle -= 10
+  0556    4F                    PRINT6: LD   C,A
+  0557    CD 0319                       CALL OUTZEI       ;Feldbezeichnung <Ziffer> ausgeben
+  055A    0E 20                         LD   C,20H
+  055C    CD 0319                       CALL OUTZEI
+  055F    23                            INC  HL
+  0560    1C                            INC  E
+  0561    15                            DEC  D
+  0562    20 DF                         JR   NZ,PRINT5
+  0564    21 028C                       LD   HL,NL1TXT    ;neue Zeile
+  0567    CD 0323                       CALL OUTTXT
+                                ;
+  056A    E1                            POP  HL
+  056B    D1                            POP  DE
+  056C    C1                            POP  BC
+  056D    C9                            RET
+                                ;
+                                ;
+                                ; Schachbrett anzeigen
+                                ; ====================
+                                ;
+  056E    C5                    SBRETT: PUSH BC
+  056F    D5                            PUSH DE
+  0570    E5                            PUSH HL
+                                ;
+	MACRO-80 3.44	09-Dec-81	PAGE	1-12
+
+
+  0571    21 028C                       LD   HL,NL1TXT    ;neue Zeile
+  0574    CD 0323                       CALL OUTTXT
+                                ;
+                                ; oberer Spielfeldrand
+                                ;
+  0577    0E 20                         LD   C,20H
+  0579    CD 0319                       CALL OUTZEI
+  057C    CD 0319                       CALL OUTZEI
+  057F    0E 2B                         LD   C,2BH
+  0581    CD 0319                       CALL OUTZEI
+  0584    21 068D                       LD   HL,AD        ;HL -> Anzahl der Damen
+  0587    56                            LD   D,(HL)
+  0588    0E 2D                 SBRET1: LD   C,2DH
+  058A    CD 0319                       CALL OUTZEI
+  058D    15                            DEC  D
+  058E    20 F8                         JR   NZ,SBRET1
+  0590    0E 2B                         LD   C,2BH
+  0592    CD 0319                       CALL OUTZEI
+  0595    21 028C                       LD   HL,NL1TXT    ;neue Zeile
+  0598    CD 0323                       CALL OUTTXT
+                                ;
+                                ; Spielfeld
+                                ;
+  059B    21 068D                       LD   HL,AD        ;HL -> Anzahl der Damen
+  059E    56                            LD   D,(HL)       ;D = Zeile [D..1]
+  059F    7A                    SBRET2: LD   A,D
+  05A0    FE 0A                         CP   0AH          ;Feldbezeichnung > "9"?
+  05A2    0E 20                         LD   C,20H
+  05A4    38 04                         JR   C,SBRET3
+  05A6    0E 31                         LD   C,31H
+  05A8    D6 0A                         SUB  10           ;Einerstelle -= 10
+  05AA    CD 0319               SBRET3: CALL OUTZEI       ;Zehner-Stelle
+  05AD    F6 30                         OR   30H
+  05AF    4F                            LD   C,A
+  05B0    CD 0319                       CALL OUTZEI       ;Einer-Stelle
+  05B3    0E 49                         LD   C,49H        ;"I"
+  05B5    CD 0319                       CALL OUTZEI
+  05B8    7A                            LD   A,D
+  05B9    3D                            DEC  A            ;akt. Zeile [(D-1)..0]
+  05BA    21 068D                       LD   HL,AD        ;HL -> Anzahl der Damen
+  05BD    46                            LD   B,(HL)       ;Anzahl der Loops
+  05BE    21 0690                       LD   HL,DA        ;Damenspeicher 1. Position
+  05C1    5E                    SBRET4: LD   E,(HL)       ;E = Spalte [A..X]
+  05C2    0E 20                         LD   C,20H        ;" "
+  05C4    BB                            CP   E
+  05C5    20 02                         JR   NZ,SBRET5
+  05C7    0E 44                         LD   C,44H        ;"D"
+  05C9    CD 0319               SBRET5: CALL OUTZEI
+  05CC    23                            INC  HL           ;naechster Damenspeicher
+  05CD    10 F2                         DJNZ SBRET4
+  05CF    0E 49                         LD   C,49H        ;"I"
+  05D1    CD 0319                       CALL OUTZEI
+  05D4    21 028C                       LD   HL,NL1TXT    ;neue Zeile
+  05D7    CD 0323                       CALL OUTTXT
+  05DA    15                            DEC  D
+  05DB    20 C2                         JR   NZ,SBRET2
+                                ;
+                                ; unterer Spielfeldrand
+                                ;
+  05DD    0E 20                         LD   C,20H
+	MACRO-80 3.44	09-Dec-81	PAGE	1-13
+
+
+  05DF    CD 0319                       CALL OUTZEI
+  05E2    CD 0319                       CALL OUTZEI
+  05E5    0E 2B                         LD   C,2BH
+  05E7    CD 0319                       CALL OUTZEI
+  05EA    21 068D                       LD   HL,AD        ;HL -> Anzahl der Damen
+  05ED    56                            LD   D,(HL)
+  05EE    0E 2D                 SBRET6: LD   C,2DH
+  05F0    CD 0319                       CALL OUTZEI
+  05F3    15                            DEC  D
+  05F4    20 F8                         JR   NZ,SBRET6
+  05F6    0E 2B                         LD   C,2BH
+  05F8    CD 0319                       CALL OUTZEI
+  05FB    21 028C                       LD   HL,NL1TXT    ;neue Zeile
+  05FE    CD 0323                       CALL OUTTXT
+  0601    0E 20                         LD   C,20H
+  0603    CD 0319                       CALL OUTZEI
+  0606    CD 0319                       CALL OUTZEI
+  0609    CD 0319                       CALL OUTZEI
+  060C    21 068D                       LD   HL,AD        ;HL -> Anzahl der Damen
+  060F    56                            LD   D,(HL)
+  0610    0E 40                         LD   C,40H        ;"A" - 1
+  0612    0C                    SBRET7: INC  C            ;Buchstabe am unteren Spielfeldrand
+  0613    CD 0319                       CALL OUTZEI
+  0616    15                            DEC  D
+  0617    20 F9                         JR   NZ,SBRET7
+  0619    21 028F                       LD   HL,NL2TXT    ;2x neue Zeile
+  061C    CD 0323                       CALL OUTTXT
+                                ;
+  061F    E1                            POP  HL
+  0620    D1                            POP  DE
+  0621    C1                            POP  BC
+  0622    C9                            RET
+                                ;
+                                ;
+                                ; RTC auslesen (MM:SS) und als Sekunden-Wert in HL speichern
+                                ; ============
+                                ;
+  0623    F5                    RTC:    PUSH AF
+  0624    C5                            PUSH BC
+  0625    D5                            PUSH DE
+                                ;
+  0626    0E 85                         LD   C,IORTC      ;IO-Adresse RTC
+  0628    21 0000                       LD   HL,0         ;Reset HL
+  062B    06 03                         LD   B,3          ;RTC-Register: Minuten-Zehner
+  062D    ED 78                         IN   A,(C)        ;von RTC lesen, B-Register = A8..A15
+  062F    E6 0F                         AND  0FH          ;nur Bit 0..3
+  0631    11 0258                       LD   DE,0258H     ;600 Sekunden
+  0634    3C                            INC  A
+  0635    3D                    RTC1:   DEC  A
+  0636    28 03                         JR   Z,RTC2
+  0638    19                            ADD  HL,DE
+  0639    18 FA                         JR   RTC1
+                                ;
+  063B    05                    RTC2:   DEC  B            ;RTC-Register: Minuten-Einer
+  063C    ED 78                         IN   A,(C)        ;von RTC lesen, B-Register = A8..A15
+  063E    E6 0F                         AND  0FH          ;nur Bit 0..3
+  0640    11 003C                       LD   DE,003CH     ;60 Sekunden
+  0643    3C                            INC  A
+  0644    3D                    RTC3:   DEC  A
+  0645    28 03                         JR   Z,RTC4
+	MACRO-80 3.44	09-Dec-81	PAGE	1-14
+
+
+  0647    19                            ADD  HL,DE
+  0648    18 FA                         JR   RTC3
+                                ;
+  064A    05                    RTC4:   DEC  B            ;RTC-Register: Sekunden-Zehner
+  064B    ED 78                         IN   A,(C)        ;von RTC lesen, B-Register = A8..A15
+  064D    E6 0F                         AND  0FH          ;nur Bit 0..3
+  064F    11 000A                       LD   DE,000AH     ;10 Sekunden
+  0652    3C                            INC  A
+  0653    3D                    RTC5:   DEC  A
+  0654    28 03                         JR   Z,RTC6
+  0656    19                            ADD  HL,DE
+  0657    18 FA                         JR   RTC5
+                                ;
+  0659    05                    RTC6:   DEC  B            ;RTC-Register: Sekunden-Einer
+  065A    ED 78                         IN   A,(C)        ;von RTC lesen, B-Register = A8..A15
+  065C    E6 0F                         AND  0FH          ;nur Bit 0..3
+  065E    3C                            INC  A
+  065F    3D                    RTC7:   DEC  A
+  0660    28 03                         JR   Z,RTC8
+  0662    23                            INC  HL
+  0663    18 FA                         JR   RTC7
+                                ;
+  0665    D1                    RTC8:   POP  DE
+  0666    C1                            POP  BC
+  0667    F1                            POP  AF
+  0668    C9                            RET
+                                ;
+                                ;
+                                ; benoetigte Rechenzeit ausgeben (steht in HL)
+                                ; ==============================
+                                ;
+  0669    F5                    ZEIT:   PUSH AF
+  066A    C5                            PUSH BC
+  066B    D5                            PUSH DE
+                                ;
+  066C    54                            LD   D,H
+  066D    5D                            LD   E,L          ;DE --> Rechenzeit
+  066E    13                            INC  DE
+  066F    1B                    ZEIT1:  DEC  DE
+  0670    7A                            LD   A,D
+  0671    B3                            OR   E
+  0672    28 15                         JR   Z,ZEIT3      ;Ende
+  0674    21 02D7                       LD   HL,SECTXT+4  ;Feld fuer Zeitanzeige
+  0677    7E                            LD   A,(HL)       ;aktueller Wert
+  0678    3C                            INC  A
+  0679    77                            LD   (HL),A
+  067A    FE 3A                 ZEIT2:  CP   3AH          ;A > 9 ?
+  067C    20 F1                         JR   NZ,ZEIT1     ;kein Ueberschlag
+  067E    3E 30                         LD   A,30H
+  0680    77                            LD   (HL),A
+  0681    2B                            DEC  HL           ;naechste Ziffer
+  0682    7E                            LD   A,(HL)
+  0683    CB E7                         SET  4,A          ;" " --> "0"
+  0685    3C                            INC  A
+  0686    77                            LD   (HL),A
+  0687    18 F1                         JR   ZEIT2
+                                ;
+  0689    D1                    ZEIT3:  POP  DE
+  068A    C1                            POP  BC
+  068B    F1                            POP  AF
+	MACRO-80 3.44	09-Dec-81	PAGE	1-15
+
+
+  068C    C9                            RET
+                                ;
+                                ;
+                                ; Speicherzellen
+                                ; ==============
+                                ;
+  068D                          AD:     DEFS 1,0          ;Anzahl der Damen (max. 12 Damen)
+  068E                          SD:     DEFS 1,0          ;Super-Damen-Berechnung J/N
+  068F                          SB:     DEFS 1,0          ;Schachbrett-Darstellung J/N
+  0690                          DA:     DEFS 12,0         ;Damen-Speicher (max. 12 Damen)
+  069C                          NO:     DEFS 2,0          ;Loesungs-Nummer (max. 4 Ziffern)
+  069E                          N2:     DEFS 2,0          ;Loesungs-Nummer #2
+  06A0                          BR:     DEFS 1,0          ;BREAK-Tastencode fuer Abbruch
+  06A1    66 69 6E 69                   DEFM "finis"
+  06A5    73                    
+                                ;
+                                        .DEPHASE
+                                        END
+	MACRO-80 3.44	09-Dec-81	PAGE	S
+
+
+Macros:
+
+Symbols:
+0444 	ABRUCH          068D 	AD              0103 	ANFTXT          
+06A0 	BR              04C0 	BREAK           02A1 	BRKTXT          
+034E 	CLR1            035A 	CLR2            E609 	CONIN           
+E60C 	CONOUT          E606 	CONST           0001 	CPM             
+0690 	DA              0449 	DAMEN           0452 	DAMEN1          
+045A 	DAMEN2          047E 	DAMEN3          048D 	DAMEN4          
+048E 	DAMEN5          04A6 	DAMEN6          04A7 	DAMEN7          
+04AE 	DAMEN8          04BB 	DAMEN9          07FD 	GETCO           
+0315 	INZEI           0085 	IORTC           0294 	LOETXT          
+069E 	N2              028C 	NL1TXT          028F 	NL2TXT          
+069C 	NO              043F 	NOSOLV          02F1 	NOSTXT          
+0283 	NOTXT           0326 	OUTTX1          032F 	OUTTX2          
+0332 	OUTTX3          0323 	OUTTXT          031F 	OUTZE1          
+0319 	OUTZEI          0311 	PATCH1          0315 	PATCH2          
+031C 	PATCH3          032C 	PATCH4          04C4 	PRINT           
+04F5 	PRINT1          0509 	PRINT2          0519 	PRINT3          
+052B 	PRINT4          0543 	PRINT5          0556 	PRINT6          
+02AE 	RDYTXT          0623 	RTC             0635 	RTC1            
+063B 	RTC2            0644 	RTC3            064A 	RTC4            
+0653 	RTC5            0659 	RTC6            065F 	RTC7            
+0665 	RTC8            068F 	SB              0588 	SBRET1          
+059F 	SBRET2          05AA 	SBRET3          05C1 	SBRET4          
+05C9 	SBRET5          05EE 	SBRET6          0612 	SBRET7          
+056E 	SBRETT          025F 	SBTXT           068E 	SD              
+0242 	SDTXT           02B6 	SE1TXT          02D3 	SECTXT          
+0336 	START           0365 	START1          037F 	START2          
+039D 	START3          039F 	START4          03C0 	START5          
+03E0 	START6          0404 	START7          0414 	START8          
+0439 	START9          0311 	TASTE           0314 	TASTE1          
+0000 	WBOOT           027C 	YESTXT          0669 	ZEIT            
+066F 	ZEIT1           067A 	ZEIT2           0689 	ZEIT3           
+
+
+
+No Fatal error(s)
+
+
+

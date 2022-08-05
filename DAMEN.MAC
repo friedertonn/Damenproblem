@@ -1,0 +1,766 @@
+; ************************************************************
+; *                                                          *
+; *  Das (Super-)Damen-Problem       Version vom 05.08.2022  *
+; *                                                          *
+; ************************************************************
+;
+; Dokumentation:
+; https://de.wikipedia.org/wiki/Damenproblem
+;
+;
+; ***************************************************
+; *  Wichtig: Fuer das AC1-Programm muss die        *
+; *           folgende Zeile auskommentiert werden  *
+; ***************************************************
+CPM     EQU  1            ;CP/M-Version
+;
+        PAGE 64
+        IF1
+        IFDEF CPM
+        .PRINTX 'CP/M-Version'
+        ELSE
+        .PRINTX 'Version fuer den AC1-Monitor'
+        ENDIF
+        .PRINTX 'PASS 1'
+        ENDIF
+;
+        IF2
+        .PRINTX 'PASS 2'
+        ENDIF
+;
+        .CREF
+        .Z80
+        IFDEF CPM
+        .PHASE 100H       ;CP/M-Programm startet bei 100H
+        ELSE
+        .PHASE 4000H      ;AC1-Programm startet bei 4000H
+        ENDIF
+;
+WBOOT   EQU  00000H       ;Warmstart
+CONST   EQU  0E606H       ;BIOS - CONST
+CONIN   EQU  0E609H       ;BIOS - CONIN
+CONOUT  EQU  0E60CH       ;BIOS - CONOUT
+;
+GETCO   EQU  07FDH        ;AC1-Monitor - Eingabeschleife
+;
+IORTC   EQU  85H          ;IO-Adresse RTC
+;
+        JP   START
+;
+;
+; Bildschirmausschriften
+;
+ANFTXT: DEFB 0DH,0AH,0DH,0AH
+        DEFM "Das (Super-)Damen-Problem"
+        DEFB 0DH,0AH
+        DEFM "-------------------------"
+        DEFB 0DH,0AH,0DH,0AH
+        DEFM "Aufgabe an den Rechner:"
+        DEFB 0DH,0AH
+        DEFM "Stelle n Damen auf einem n x n Schachbrett so auf,"
+        DEFB 0DH,0AH
+        DEFM "dass sie sich gegenseitig nicht schlagen koennen."
+        DEFB 0DH,0AH,0DH,0AH
+        DEFM "Super-Damen (Amazonen):"
+        DEFB 0DH,0AH
+        DEFM "Super-Damen duerfen wie Damen und Springer ziehen."
+        DEFB 0DH,0AH,0DH,0AH
+        DEFM "Abbruch mit Ctrl-C"
+        DEFB 0DH,0AH,0DH,0AH
+        DEFM "Anzahl der Damen (1..12) = "
+        DEFB 00H
+;
+SDTXT:  DEFB 0DH,0AH,0DH,0AH
+        DEFM "Mit Super-Damen? (j/n): "
+        DEFB 00H
+;
+SBTXT:  DEFM "Anzeige Schachbrett? (j/n): "
+        DEFB 00H
+;
+YESTXT: DEFM "Ja"
+        DEFB 0DH,0AH,0DH,0AH,00H
+;
+NOTXT:  DEFM "Nein"
+        DEFB 0DH,0AH,0DH,0AH,00H
+;
+NL1TXT: DEFB 0DH,0AH,00H
+;
+NL2TXT: DEFB 0DH,0AH,0DH,0AH,00H
+;
+LOETXT: DEFM ". Loesung - "
+        DEFB 00H
+;
+BRKTXT: DEFM "Abbruch!"
+        DEFB 0DH,0AH,0DH,0AH,00H
+;
+RDYTXT: DEFM "Fertig!"
+        DEFB 00H
+;
+SE1TXT: DEFM "    1 Sekunde Rechenzeit"
+        DEFB 0DH,0AH,0DH,0AH,00H
+;
+SECTXT: DEFM "    0 Sekunden Rechenzeit"
+        DEFB 0DH,0AH,0DH,0AH,00H
+;
+NOSTXT: DEFM "--> keine Loesung gefunden!"
+        DEFB 0DH,0AH,0DH,0AH,00H
+;
+;
+; UP Taste gedrueckt?
+; ===================
+;
+TASTE:
+        IFDEF CPM
+PATCH1: CALL CONST        ;CP/M: CONST
+        ELSE
+        IN   A,(04H)      ;AC1: PIO1 Port A lesen
+        RES  7,A
+        OR   A
+        JR   Z,TASTE1
+        LD   (BR),A       ;Tasten-Code merken
+        LD   A,0FFH       ;Taste gedrueckt
+        ENDIF
+TASTE1: RET
+;
+;
+; UP Zeicheneingabe
+; =================
+;
+INZEI:
+        IFDEF CPM
+PATCH2: CALL CONIN        ;CP/M: CONIN
+        ELSE
+INZEI1: IN   A,(04H)      ;AC1: PIO1 Port A lesen
+        RES  7,A
+        OR   A
+        JR   NZ,INZEI1    ;(falsche) Taste gedrueckt
+INZEI2: IN   A,(04H)      ;AC1: PIO1 Port A lesen
+        RES  7,A
+        OR   A
+        JR   Z,INZEI2     ;keine Taste gedrueckt
+        ENDIF
+        RET
+;
+;
+; UP Zeichenausgabe
+; =================
+;
+OUTZEI: PUSH AF
+        PUSH BC
+        PUSH DE
+        IFDEF CPM
+PATCH3: CALL CONOUT       ;CP/M: CONOUT
+        ELSE
+        LD  A,C
+        CP  0AH           ;0AH nicht ausgeben
+        JR  Z,OUTZE1
+        RST 10H           ;AC1: RST 10H
+        ENDIF
+OUTZE1: POP  DE
+        POP  BC
+        POP  AF
+        RET
+;
+;
+; UP Textausgabe
+; ==============
+;
+OUTTXT: PUSH AF
+        PUSH BC
+        PUSH DE
+OUTTX1: LD   A,(HL)
+        CP   0            ;Ende
+        JR   Z,OUTTX3
+        IFDEF CPM
+        LD   C,A
+PATCH4: CALL CONOUT       ;CP/M: CONOUT
+        ELSE
+        CP  0AH           ;0AH nicht ausgeben
+        JR  Z,OUTTX2
+        RST 10H           ;AC1: RST 10H
+        ENDIF
+OUTTX2: INC  HL
+        JR   OUTTX1
+OUTTX3: POP  DE
+        POP  BC
+        POP  AF
+        RET
+;
+;
+; Programmstart
+; =============
+;
+START:
+        IFDEF CPM
+        LD   SP,0100H     ;CP/M - Stack
+        ELSE
+        LD   SP,1856H     ;AC1 - Stack
+        ENDIF
+;
+; BIOS-Routinen: HWT patchen
+;
+        IFDEF CPM
+        LD   A,(WBOOT+2)  ;HWT Adresse WBOOT lesen
+        LD   (PATCH1+2),A ;HWT Adresse CONST
+        LD   (PATCH2+2),A ;HWT Adresse CONIN
+        LD   (PATCH3+2),A ;HWT Adresse CONOUT
+        LD   (PATCH4+2),A ;HWT Adresse CONOUT
+        ENDIF
+;
+; Variablenspeicher loeschen
+;
+        LD   HL,AD
+        LD   BC,20
+CLR1:   LD   (HL),0
+        INC  HL
+        DJNZ CLR1
+;
+; Sekunden-Anzeige ruecksetzen
+;
+        LD   HL,SECTXT+4
+        LD   (HL),30H
+        LD   B,4
+CLR2:   DEC  HL
+        LD   (HL),20H
+        DJNZ CLR2
+;
+; Anfangstext und Anzahl der Damen
+;
+        LD   HL,ANFTXT    ;Anfangstext
+        CALL OUTTXT
+START1: CALL INZEI        ;CALL CONIN --> 1. Ziffer
+        CP   03H          ;Abbruch?
+        JP   Z,ABRUCH
+        CP   31H          ;D >= "1"?
+        JR   C,START1
+        CP   3AH          ;D <= "9"?
+        JR   NC,START1
+        LD   C,A
+        CALL OUTZEI
+        AND  0FH          ;Ziffer --> HEX-Wert
+        CP   1            ;D = "1"?
+        JR   NZ,START4
+START2: CALL INZEI        ;CALL CONIN --> 2. Ziffer
+        CP   03H          ;Abbruch?
+        JP   Z,ABRUCH
+        CP   0DH          ;D = <ENTER>?
+        JR   Z,START3
+        CP   30H          ;D >= "0"?
+        JR   C,START2
+        CP   33H          ;D <= "2"?
+        JR   NC,START2
+        LD   C,A
+        CALL OUTZEI
+        AND  0FH          ;Ziffer --> HEX-Wert
+        ADD  A,10
+        JR   START4
+;
+START3: LD   A,1          ;2. Ziffer war <Enter>
+START4: LD   HL,AD
+        LD   (HL),A       ;Anzahl der Damen speichern
+;
+; mit Super-Damen?
+;
+        LD   HL,SDTXT     ;Super-Damen-Text
+        CALL OUTTXT
+        CALL INZEI        ;CALL CONIN
+        CP   03H          ;Abbruch?
+        JP   Z,ABRUCH
+        AND  0DFH         ;UPCASE
+        LD   (SD),A       ;Wert im Feld SD speichern
+        CP   "J"
+        LD   HL,YESTXT
+        JR   Z,START5
+        LD   HL,NOTXT
+START5: CALL OUTTXT
+;
+; Schachbrett anzeigen?
+;
+        LD   HL,SBTXT     ;Schachbrett-Text
+        CALL OUTTXT
+        CALL INZEI        ;CALL CONIN
+        CP   03H          ;Abbruch?
+        JP   Z,ABRUCH
+        AND  0DFH         ;UPCASE
+        LD   (SB),A       ;Wert im Feld SB speichern
+        CP   "J"
+        LD   HL,YESTXT
+        JR   Z,START6
+        LD   HL,NOTXT
+START6: CALL OUTTXT
+;
+; RTC lesen und Berechnung starten
+;
+        CALL RTC          ;Startzeit --> HL
+        PUSH HL           ;Startzeit sichern
+        CALL DAMEN
+        LD   HL,(NO)      ;Loesungs-Nummer
+        LD   A,H
+        OR   L
+        JR   Z,NOSOLV     ;keine Loesung gefunden
+;
+; Berechnungszeit ausgeben --> rechnet bis 1 Stunde korrekt
+;
+        CALL RTC          ;Ende-Zeit --> HL
+        POP  DE           ;Startzeit --> DE
+        XOR  A            ;CY = 0
+        SBC  HL,DE
+        PUSH HL           ;Differenzzeit sichern
+        LD   A,H
+        AND  0F0H         ;Pruefen auf Überlauf (-1 Stunde)
+        CP   0F0H
+        JR   NZ,START7
+        LD   DE,0E10H     ;3600 Sekunden addieren
+        ADD  HL,DE
+START7: CALL ZEIT         ;Rechenzeit dezimal ausgeben
+        LD   A,(SB)
+        CP   "J"          ;Schachbrett-Darstellung?
+        JR   Z,START8     ;ja
+        LD   HL,NL1TXT    ;nein, neue Zeile
+        CALL OUTTXT
+;
+; Schlusstext: "Fertig!" oder "Abbruch!"
+;
+START8: LD   A,(BR)       ;Break-Tastencode
+        LD   HL,BRKTXT    ;"Abbruch!"
+        POP  DE           ;Differenzzeit zurueck
+        CP   03H          ;Ctrl-C ?
+        JR   Z,START9     ;--> Abbruch
+        LD   HL,RDYTXT    ;"Fertig!"
+        CALL OUTTXT
+        INC  DE
+        LD   HL,NL2TXT    ;keine Sekundenanzeige
+        DEC  DE
+        LD   A,D
+        OR   E
+        JR   Z,START9
+        LD   HL,SE1TXT    ;Anzeige: 1 Sekunde
+        DEC  DE
+        LD   A,D
+        OR   E
+        JR   Z,START9
+        LD   HL,SECTXT    ;Anzeige: n Sekunden
+START9: CALL OUTTXT
+        IFDEF CPM
+        JP   WBOOT        ;CP/M: WBOOT
+        ELSE
+        JP   GETCO        ;AC1: Eingabeschleife
+        ENDIF
+;
+NOSOLV: LD   HL,NOSTXT    ;Anzeige: --> keine Loesung gefunden!
+        JR   START9
+;
+ABRUCH: LD   HL,BRKTXT    ;Anzeige: Abbruch!
+        JR   START9
+;
+;
+; Damenprogramm
+; =============
+;
+DAMEN:  LD   HL,AD
+        LD   D,(HL)       ;D = Anz. der Damen
+        LD   HL,DA        ;HL -> Damenspeicher 1. Position
+        LD   C,1          ;C = Anz. der gesetzten Damen
+DAMEN1: LD   E,(HL)       ;E = akt. Damenposition [0..7]
+        PUSH HL
+        LD   HL,DA        ;Damenspeicher 1. Pos.
+        LD   B,C          ;B = Laufvariable [C..1]
+        JR   DAMEN5
+;
+DAMEN2: LD   A,(HL)       ;Damenposition im Damen-Speicher
+        CP   E            ;gleiche Hoehe?
+        JR   Z,DAMEN6
+        ADD  A,B
+        CP   E            ;Diagonale 1?
+        JR   Z,DAMEN6
+        SUB  B
+        SUB  B
+        CP   E            ;Diagonale 2?
+        JR   Z,DAMEN6
+;
+; Start of "Super-Dame"
+;
+        LD   A,(SD)       ;Super-Damen?
+        CP   "J"
+        JR   NZ,DAMEN4    ;nein
+;
+        LD   A,B          ;Laufvariable [C..1]
+        CP   1            ;letzte Damenposition?
+        JR   NZ,DAMEN3
+        LD   A,(HL)
+        ADD  A,2
+        CP   E            ;Pferd 1?
+        JR   Z,DAMEN6
+        SUB  4
+        CP   E            ;Pferd 2?
+        JR   Z,DAMEN6
+DAMEN3: LD   A,B          ;Laufvariable [C..1]
+        CP   2            ;vorletzte Damenposition?
+        JR   NZ,DAMEN4
+        LD   A,(HL)
+        INC  A
+        CP   E            ;Pferd 3?
+        JR   Z,DAMEN6
+        SUB  2
+        CP   E            ;Pferd 4?
+        JR   Z,DAMEN6
+;
+; End of "Super-Dame"
+;
+DAMEN4: INC  HL
+DAMEN5: DJNZ DAMEN2
+        POP  HL           ;Zeile ist korrekt!
+        INC  C            ;Anz. der gesetzten Damen += 1
+        INC  HL           ;naechste Zeile
+        LD   A,D
+        CP   C            ;D Damen erreicht?
+        JR   NC,DAMEN1    ;nein
+        CALL PRINT        ;ja --> Ergebnisausgabe
+        LD   A,(SB)
+        CP   "J"          ;Schachbrett-Darstellung?
+        JR   NZ,DAMEN8    ;nein
+        CALL SBRETT
+        JR   DAMEN8
+;
+DAMEN6: POP  HL           ;letzter Zug war nicht korrekt
+DAMEN7: INC  (HL)         ;naechste Position testen
+        LD   A,(HL)
+        CP   D            ;D Felder erreicht?
+        JR   C,DAMEN1     ;nein
+        LD   (HL),0       ;ja, 1 Schritt zurueck
+DAMEN8: CALL TASTE        ;Taste gedrueckt?
+        OR   A
+        JR   Z,DAMEN9     ;nein
+        IFDEF CPM
+        CALL INZEI        ;CP/M: Eingabepuffer lesen
+        ELSE
+        LD   A,(BR)       ;AC1: Break-Tastencode holen
+        ENDIF  
+        CP   03H          ;Ctrl-C ?
+        JR   Z,BREAK      ;ja --> Abbruch
+DAMEN9: DEC  HL
+        DEC  C
+        JR   NZ,DAMEN7
+        RET               ;alles getestet, fertig!
+;
+BREAK:  LD   (BR),A
+        RET
+;
+;
+; Ergebnisausgabe
+; ===============
+;
+PRINT:  PUSH BC
+        PUSH DE
+        PUSH HL
+;
+; Loesungs-Nummer += 1
+;
+        LD   HL,(NO)      ;Loesungs-Nummer
+        LD   DE,(N2)      ;Loesungs-Nummer #2
+        LD   A,L
+        ADD  A,1          ;Einer += 1
+        DAA
+        LD   L,A
+        LD   A,H
+        ADC  A,0          ;Hunderter += Ueberschlag
+        DAA
+        LD   H,A
+        LD   A,E
+        ADC  A,0          ;Zehntausender += Ueberschlag
+        DAA
+        LD   E,A
+        LD   (NO),HL      ;zurueckschreiben
+        LD   (N2),DE      ;zurueckschreiben #2
+;
+; Ziffernanzeige
+;
+        LD   B,0          ;Merker fuer NICHT-fuehrende Nullen
+        LD   A,E
+        AND  01H          ;12 Damen geht "nur" bis 14200
+        OR   30H
+        LD   C,A
+        CP   30H          ;"0"?
+        JR   Z,PRINT1
+        CALL OUTZEI       ;Zehntausender ausgeben
+        LD   B,1          ;ab jetzt "0" ausgeben
+PRINT1: LD   A,H
+        AND  0F0H
+        RRA
+        RRA
+        RRA
+        RRA
+        OR   30H
+        LD   C,A
+        ADD  A,B
+        CP   30H          ;"0"?
+        JR   Z,PRINT2
+        CALL OUTZEI       ;Tausender ausgeben
+        LD   B,1          ;ab jetzt "0" ausgeben
+PRINT2: LD   A,H
+        AND  0FH
+        OR   30H
+        LD   C,A
+        ADD  A,B
+        CP   30H          ;"0"?
+        JR   Z,PRINT3
+        CALL OUTZEI       ;Hunderter ausgeben
+        LD   B,1          ;ab jetzt "0" ausgeben
+PRINT3: LD   A,L
+        AND  0F0H
+        RRA
+        RRA
+        RRA
+        RRA
+        OR   30H
+        LD   C,A
+        ADD  A,B
+        CP   30H          ;"0"?
+        JR   Z,PRINT4
+        CALL OUTZEI       ;Zehner ausgeben
+PRINT4: LD   A,L
+        AND  0FH
+        OR   30H
+        LD   C,A
+        CALL OUTZEI       ;Einer ausgeben
+        LD   HL,LOETXT
+        CALL OUTTXT       ;". Loesung - "
+;
+; Position der Damen ausgeben
+;
+        LD   HL,AD        ;HL -> Anzahl der Damen
+        LD   D,(HL)       ;D = Anz. der Damen
+        LD   E,41H        ;erste Feldbezeichnung "A"
+        LD   HL,DA        ;Damenspeicher 1. Position
+PRINT5: LD   C,E
+        CALL OUTZEI       ;Feldbezeichnung <Buchstabe> ausgeben
+        LD   A,(HL)
+        INC  A            ;Wertebereich [1..D]
+        OR   30H
+        CP   3AH          ;Feldbezeichnung > "9"?
+        JR   C,PRINT6     ;nein
+        LD   C,31H        ;Zehnerstelle = "1"
+        CALL OUTZEI
+        SUB  10           ;Einerstelle -= 10
+PRINT6: LD   C,A
+        CALL OUTZEI       ;Feldbezeichnung <Ziffer> ausgeben
+        LD   C,20H
+        CALL OUTZEI
+        INC  HL
+        INC  E
+        DEC  D
+        JR   NZ,PRINT5
+        LD   HL,NL1TXT    ;neue Zeile
+        CALL OUTTXT
+;
+        POP  HL
+        POP  DE
+        POP  BC
+        RET
+;
+;
+; Schachbrett anzeigen
+; ====================
+;
+SBRETT: PUSH BC
+        PUSH DE
+        PUSH HL
+;
+        LD   HL,NL1TXT    ;neue Zeile
+        CALL OUTTXT
+;
+; oberer Spielfeldrand
+;
+        LD   C,20H
+        CALL OUTZEI
+        CALL OUTZEI
+        LD   C,2BH
+        CALL OUTZEI
+        LD   HL,AD        ;HL -> Anzahl der Damen
+        LD   D,(HL)
+SBRET1: LD   C,2DH
+        CALL OUTZEI
+        DEC  D
+        JR   NZ,SBRET1
+        LD   C,2BH
+        CALL OUTZEI
+        LD   HL,NL1TXT    ;neue Zeile
+        CALL OUTTXT
+;
+; Spielfeld
+;
+        LD   HL,AD        ;HL -> Anzahl der Damen
+        LD   D,(HL)       ;D = Zeile [D..1]
+SBRET2: LD   A,D
+        CP   0AH          ;Feldbezeichnung > "9"?
+        LD   C,20H
+        JR   C,SBRET3
+        LD   C,31H
+        SUB  10           ;Einerstelle -= 10
+SBRET3: CALL OUTZEI       ;Zehner-Stelle
+        OR   30H
+        LD   C,A
+        CALL OUTZEI       ;Einer-Stelle
+        LD   C,49H        ;"I"
+        CALL OUTZEI
+        LD   A,D
+        DEC  A            ;akt. Zeile [(D-1)..0]
+        LD   HL,AD        ;HL -> Anzahl der Damen
+        LD   B,(HL)       ;Anzahl der Loops
+        LD   HL,DA        ;Damenspeicher 1. Position
+SBRET4: LD   E,(HL)       ;E = Spalte [A..X]
+        LD   C,20H        ;" "
+        CP   E
+        JR   NZ,SBRET5
+        LD   C,44H        ;"D"
+SBRET5: CALL OUTZEI
+        INC  HL           ;naechster Damenspeicher
+        DJNZ SBRET4
+        LD   C,49H        ;"I"
+        CALL OUTZEI
+        LD   HL,NL1TXT    ;neue Zeile
+        CALL OUTTXT
+        DEC  D
+        JR   NZ,SBRET2
+;
+; unterer Spielfeldrand
+;
+        LD   C,20H
+        CALL OUTZEI
+        CALL OUTZEI
+        LD   C,2BH
+        CALL OUTZEI
+        LD   HL,AD        ;HL -> Anzahl der Damen
+        LD   D,(HL)
+SBRET6: LD   C,2DH
+        CALL OUTZEI
+        DEC  D
+        JR   NZ,SBRET6
+        LD   C,2BH
+        CALL OUTZEI
+        LD   HL,NL1TXT    ;neue Zeile
+        CALL OUTTXT
+        LD   C,20H
+        CALL OUTZEI
+        CALL OUTZEI
+        CALL OUTZEI
+        LD   HL,AD        ;HL -> Anzahl der Damen
+        LD   D,(HL)
+        LD   C,40H        ;"A" - 1
+SBRET7: INC  C            ;Buchstabe am unteren Spielfeldrand
+        CALL OUTZEI
+        DEC  D
+        JR   NZ,SBRET7
+        LD   HL,NL2TXT    ;2x neue Zeile
+        CALL OUTTXT
+;
+        POP  HL
+        POP  DE
+        POP  BC
+        RET
+;
+;
+; RTC auslesen (MM:SS) und als Sekunden-Wert in HL speichern
+; ============
+;
+RTC:    PUSH AF
+        PUSH BC
+        PUSH DE
+;
+        LD   C,IORTC      ;IO-Adresse RTC
+        LD   HL,0         ;Reset HL
+        LD   B,3          ;RTC-Register: Minuten-Zehner
+        IN   A,(C)        ;von RTC lesen, B-Register = A8..A15
+        AND  0FH          ;nur Bit 0..3
+        LD   DE,0258H     ;600 Sekunden
+        INC  A
+RTC1:   DEC  A
+        JR   Z,RTC2
+        ADD  HL,DE
+        JR   RTC1
+;
+RTC2:   DEC  B            ;RTC-Register: Minuten-Einer
+        IN   A,(C)        ;von RTC lesen, B-Register = A8..A15
+        AND  0FH          ;nur Bit 0..3
+        LD   DE,003CH     ;60 Sekunden
+        INC  A
+RTC3:   DEC  A
+        JR   Z,RTC4
+        ADD  HL,DE
+        JR   RTC3
+;
+RTC4:   DEC  B            ;RTC-Register: Sekunden-Zehner
+        IN   A,(C)        ;von RTC lesen, B-Register = A8..A15
+        AND  0FH          ;nur Bit 0..3
+        LD   DE,000AH     ;10 Sekunden
+        INC  A
+RTC5:   DEC  A
+        JR   Z,RTC6
+        ADD  HL,DE
+        JR   RTC5
+;
+RTC6:   DEC  B            ;RTC-Register: Sekunden-Einer
+        IN   A,(C)        ;von RTC lesen, B-Register = A8..A15
+        AND  0FH          ;nur Bit 0..3
+        INC  A
+RTC7:   DEC  A
+        JR   Z,RTC8
+        INC  HL
+        JR   RTC7
+;
+RTC8:   POP  DE
+        POP  BC
+        POP  AF
+        RET
+;
+;
+; benoetigte Rechenzeit ausgeben (steht in HL)
+; ==============================
+;
+ZEIT:   PUSH AF
+        PUSH BC
+        PUSH DE
+;
+        LD   D,H
+        LD   E,L          ;DE --> Rechenzeit
+        INC  DE
+ZEIT1:  DEC  DE
+        LD   A,D
+        OR   E
+        JR   Z,ZEIT3      ;Ende
+        LD   HL,SECTXT+4  ;Feld fuer Zeitanzeige
+        LD   A,(HL)       ;aktueller Wert
+        INC  A
+        LD   (HL),A
+ZEIT2:  CP   3AH          ;A > 9 ?
+        JR   NZ,ZEIT1     ;kein Ueberschlag
+        LD   A,30H
+        LD   (HL),A
+        DEC  HL           ;naechste Ziffer
+        LD   A,(HL)
+        SET  4,A          ;" " --> "0"
+        INC  A
+        LD   (HL),A
+        JR   ZEIT2
+;
+ZEIT3:  POP  DE
+        POP  BC
+        POP  AF
+        RET
+;
+;
+; Speicherzellen
+; ==============
+;
+AD:     DEFS 1,0          ;Anzahl der Damen (max. 12 Damen)
+SD:     DEFS 1,0          ;Super-Damen-Berechnung J/N
+SB:     DEFS 1,0          ;Schachbrett-Darstellung J/N
+DA:     DEFS 12,0         ;Damen-Speicher (max. 12 Damen)
+NO:     DEFS 2,0          ;Loesungs-Nummer (max. 4 Ziffern)
+N2:     DEFS 2,0          ;Loesungs-Nummer #2
+BR:     DEFS 1,0          ;BREAK-Tastencode fuer Abbruch
+        DEFM "finis"
+;
+        .DEPHASE
+        END
+;
