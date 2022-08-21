@@ -1,0 +1,6 @@
+*.mac linguist-detectable=true
+*.prn linguist-detectable=false
+*.z80 linguist-detectable=false
+*.bin linguist-detectable=false
+*.com linguist-detectable=false
+*.sub linguist-detectable=false
