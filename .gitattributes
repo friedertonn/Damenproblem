@@ -1,6 +1,4 @@
-*.mac linguist-detectable=true
+*.mac linguist-language=Assembly
 *.prn linguist-detectable=false
-*.z80 linguist-detectable=false
-*.bin linguist-detectable=false
-*.com linguist-detectable=false
-*.sub linguist-detectable=false
+AC1-Dateien/* linguist-vendored
+CPM-Dateien/* linguist-vendored
