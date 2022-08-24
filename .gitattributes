@@ -1,4 +1,10 @@
-*.mac linguist-language=Assembly
-*.prn linguist-detectable=false
-AC1-Dateien/* linguist-vendored
-CPM-Dateien/* linguist-vendored
+*.MAC text eol=crlf
+*.PRN text eol=crlf
+*.Z80 binary
+*.BIN binary
+*.COM binary
+*.SUB text eol=crlf
+DAMEN.MAC linguist-language=Assembly linguist-detectable
+DAMEN.PRN linguist-generated
+AC1-Dateien/* linguist-generated
+CPM-Dateien/* linguist-generated
